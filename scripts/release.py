@@ -26,6 +26,7 @@ ISSUER = "https://token.actions.githubusercontent.com"
 MAX_ARCHIVE_BYTES = 256 * 1024 * 1024
 MAX_EXPANDED_BYTES = 512 * 1024 * 1024
 UNSAFE_NAME = re.compile(
+    r"(?:^|[/_.-])(?:local|test|testing)(?:$|[/_.-])|"
     r"local[-_]?test|unlocked|private|credential|secret|seller[-_]?token|"
     r"customer[-_]?key|pairing|sunshine|browser[-_]?profile",
     re.IGNORECASE,

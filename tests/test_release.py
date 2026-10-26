@@ -134,7 +134,8 @@ class HandoffTests(unittest.TestCase):
         for name in ("../escape", "A/../escape", "/absolute", "A\\escape",
                      "C:/escape", "A//B", "A/.git/config", "NUL.txt",
                      "a/COM1.cfg", "a.", "Pro-LOCAL-TEST.exe", "unlocked.exe",
-                     "customer-key.json", "pairing.json", "config.pfx", "App.cs"):
+                     "customer-key.json", "pairing.json", "config.pfx", "App.cs",
+                     "Test.exe", "a/testing/file.txt", "local-settings.json"):
             with self.subTest(name=name), self.assertRaises(release.ReleaseError):
                 release.safe_path(name)
 

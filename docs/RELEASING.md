@@ -12,6 +12,12 @@ at exact protected distribution commit
 The release tag and provenance's `distribution_commit` record that workflow
 commit, not subsequent documentation-only commits on `main`.
 
+The non-bundled **1.3.0 candidate** below has been independently inspected and
+proposed through the protected PR path. It is **not a published release**.
+Candidate pins and successful validation do not authorize staging, signing or
+publication; final coordinator review and separate exact-commit authorization
+remain required.
+
 The **repository policy gate remains enabled**. After the completed release and
 local verification, the `production-release` environment was restored to
 `RELEASE_SIGNING_ENABLED=false` and checked. This blocks **future signing
@@ -51,10 +57,11 @@ remain in force.
    another trusted maintainer becomes available, add mandatory independent PR and
    environment reviewers and prevent self-review; never weaken existing controls
    to make a release run.
-4. The coordinator has approved the exact version, private application source
-   commit, complete public payload, independently reviewed per-edition filename
-   allowlist, and manifest SHA256 documented below. The policy's `candidate` pins the version,
-   source commit and manifest digest; all dispatch inputs must match those pins.
+4. Before release operations, the coordinator must approve the exact version,
+   private application source commit, complete public payload, independently
+   reviewed per-edition filename allowlist, and manifest SHA256 documented below.
+   The policy's `candidate` pins the version, source commit and manifest digest;
+   all dispatch inputs must match those pins.
    Changing a candidate requires another reviewed policy change. A matching
    checksum or a builder-supplied filename is **not** evidence that a file is
    appropriate to publish.
@@ -92,7 +99,8 @@ explicitly reviewed runtime assets, public documentation, controller mappings an
 fresh templates. All usable Xbox mappings/profiles are included in every edition.
 Paid production builds remain license-gated.
 
-The published v1.2.0 payload in [release-policy.json](../release-policy.json) has
+The reviewed payload path policy in [release-policy.json](../release-policy.json),
+unchanged between published v1.2.0 and candidate v1.3.0, has
 14 files common to all editions: the native EXE, Backend and Performance runtime
 PowerShell scripts, original logo/icon, controller documentation, five RetroArch
 mappings and the common XInput configuration, README and third-party notices.
@@ -151,6 +159,64 @@ build attestation. The completed signing run and post-publication verification
 establish signed-byte identity, not those acceptance results. Future release
 authorization must acknowledge these limits; do not mutate or repack the published
 ZIP bytes.
+
+### Non-bundled v1.3.0 candidate review
+
+The proposed candidate is version `1.3.0`, private application source commit
+`5f74e07189f62540b6b4e8df0236d0c5ba37370d`, and exact manifest SHA256
+`a82a2af9313565e6d00e8f96fc1986b7f3dbbf217d9035c79c5d4a1dde778ef0`.
+The manifest is 8,197 bytes, schema version `1`, with
+`distribution_mode` exactly `nonbundled`. The policy's candidate tuple identifies
+these inspected bytes, not any superseded 1.3.0 export.
+
+| Production ZIP | Bytes | SHA256 |
+| --- | ---: | --- |
+| `PixelBridge-v1.3.0-Free-win-x64.zip` | 172023 | `ff118409724c4dbc65bd72cb30cea81bb894866cc9bcfe3727b691b3f0f9deda` |
+| `PixelBridge-v1.3.0-FreewithAds-win-x64.zip` | 196834 | `6c661177502214e3c76ef9514432d0417da5ed18986282a0f7ecf8d0917e1ea3` |
+| `PixelBridge-v1.3.0-Pro-win-x64.zip` | 172023 | `faa421eb38fa26f978764be4c2aa36c2eb728144785499f0b3a473c6a205170c` |
+| `PixelBridge-v1.3.0-Supporter-win-x64.zip` | 172025 | `10063acf1de98c290d4baf157eac797f24b635d6261050eef12afaa70e066a24` |
+
+Independent read-only review accepted exactly these four ZIPs and manifest,
+including strict ZIP container structure and every declared payload size and
+SHA256. All paths still equal the original reviewed 14-file allowlist, or 15 for
+FreewithAds. The 13 common non-EXE payloads are identical across editions. Compared
+with published 1.2.0, only the EXE, Backend script and three customer text guides
+change; all assets, six controller profile/config files and Performance script
+retain their previously reviewed bytes.
+
+Private production receipts agree with every shipped file record, edition,
+`local_test=false` and `nonbundled` mode. Their source fingerprint was independently
+recomputed from the 42 committed build inputs using the repository's Windows
+checkout line endings. Every non-EXE payload also matches its committed source
+file. These checks are consistency evidence, not an independent full-binary
+rebuild or a reproducible-build attestation. Receipts and review evidence are
+private and are not release assets.
+
+Reflection-only inspection of each contained managed EXE found x64 CLI version
+`1.3.0.0`, the correct edition constant, `IsLocalTest=false`,
+`DistributionMode=nonbundled`, and only the embedded PixelBridge icon resource.
+The EXEs have no Authenticode certificate table. Licensing code is unchanged.
+Customer guides explicitly exclude Sunshine and direct users to its official
+upstream release page for independent verification and setup. PixelBridge does
+not download or invoke its installer; configured-host launch/reuse remains
+available. Browser preference, guided TV hardware routes and purchase continuity
+are retained. The saved all-edition XInput menu-navigation switch leaves mouse
+and keyboard available; the controller guide documents foreground/modal/busy
+guards and keyboard-only field boundaries, without claiming physical acceptance.
+
+No upstream installer, Lite archive, source tree, inventory, compliance sidecar,
+private receipt, personal wrapper, LOCAL-TEST build, live settings, browser
+profile, license cache or Sunshine state is in this exact customer payload.
+Actual cloud sign-in/playback, physical controller/TV/extender/audio/gameplay,
+clean-PC independent Sunshine setup/pairing and real-customer activation remain
+untested. No app or runtime script was executed during this independent payload
+inspection. The application license is unchanged; future Sunshine bundling and
+its source/notices/rights/access review remain blocked and separate.
+
+This candidate is **not signed, staged or published**. Keep
+`RELEASE_SIGNING_ENABLED=false`, leave the integration PR unmerged for coordinator
+review, and do not reuse the completed 1.2.0 release authorization. No 1.3.0
+download URL or production signing run is established by these pins.
 
 The ZIP producer must omit directory entries, comments, ZIP extra fields, data
 descriptors, prefixes/trailing data, encrypted entries and symlinks. Use a seekable
@@ -223,10 +289,11 @@ The signed manifest binds the mode to the exact reviewed bytes. Generated signed
 provenance copies `distribution_mode`, and release notes disclose that Sunshine
 must be obtained separately. The four-ZIP, 18-asset and 11-signature contracts and
 all payload allowlists and publication guards remain unchanged. This is
-source-independent infrastructure support, **not approval or publication of a
-v1.3.0 candidate**. Actual source and manifest hashes must be independently
-reviewed and pinned through a new protected PR before separately authorized
-release steps. Never reuse v1.2.0 authorization or placeholder candidate pins.
+contract support and candidate pinning, **not release authorization or publication
+of a v1.3.0 candidate**. Actual source and manifest hashes must be independently
+reviewed and pinned through the protected PR path before separately authorized
+release steps. The candidate review above remains subject to final coordinator
+review. Never reuse v1.2.0 authorization or placeholder candidate pins.
 
 The reviewed policy contains the independent exact path list for each edition.
 Manifest paths must equal that policy, not merely pass a substring filter.
@@ -237,7 +304,8 @@ the private build owner and coordinator must inspect the payload before approval
 Runtime PowerShell scripts intentionally shipped with the application must be
 explicitly reviewed; this does not authorize publishing the private source tree.
 
-Never stage the separate `PixelBridge-v1.2.0-Pro-LOCAL-TEST-win-x64.zip`.
+Never stage any LOCAL-TEST archive, including the separate
+`PixelBridge-v1.2.0-Pro-LOCAL-TEST-win-x64.zip` or its v1.3.0 equivalent.
 Never stage private source, customer/account keys, browser profiles, seller tokens,
 credentials, signing keys, logs, Sunshine pairing/configuration/state, or any
 user-specific data. Do not touch the existing local CloudPlay installation.
@@ -261,7 +329,7 @@ test build; do not use wildcard upload commands.
 2. With the reviewed public policy, run the offline validator, for example:
 
    ```powershell
-   python .\scripts\release.py validate --policy .\release-policy.json --directory D:\PixelBridge\production-staging --version 1.2.0 --source-commit APPROVED_40_HEX --manifest-sha256 APPROVED_64_HEX
+   python .\scripts\release.py validate --policy .\release-policy.json --directory D:\PixelBridge\production-staging --version 1.3.0 --source-commit APPROVED_40_HEX --manifest-sha256 APPROVED_64_HEX
    ```
 
    That directory must contain exactly the four production ZIPs and manifest.

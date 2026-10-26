@@ -23,16 +23,22 @@ prerequisites are complete.
    Review these pins against the official
    [actions/checkout repository](https://github.com/actions/checkout) and cosign
    release before updating them.
-2. Protect `main` with required pull-request review and status checks, restrict
-   direct writes and bypass, and require trusted review for workflow, policy,
-   scripts and documentation changes. The workflow checks `github.ref_protected`,
-   but that flag alone cannot prove the strength of repository rules.
-3. Create the `production-release` GitHub environment **before dispatch**, with
-   required reviewers, prevention of self-review where supported, and deployment
-   restricted to protected `main`. An environment name in YAML alone does not
-   create approval protection. Check the actual repository/environment settings;
-   the initial inspection found **no environments and unprotected main**.
-   Both require configuration before production dispatch.
+2. `main` is configured to require the pull-request path and an up-to-date passing
+   `release-guard` check specifically from the GitHub Actions app. Enforcement
+   includes administrators; force pushes and deletion are blocked, linear history
+   and conversation resolution are required. Workflow, policy, script and
+   documentation changes still require trusted human review. The workflow checks
+   `github.ref_protected`, but that flag alone does not prove all these settings.
+3. The `production-release` environment is configured with a `main`-branch-only
+   deployment policy and `RELEASE_SIGNING_ENABLED=false`. There is currently one
+   maintainer, `TheRealRickPrime`: the PR path has zero required approving reviews
+   and the environment has no required reviewer. This is an explicitly authorized
+   **sole-maintainer setup**, not an independent-approval guarantee. No self-review
+   bypass or paid plan is used. The coordinator must review the exact workflow
+   commit, private source commit and manifest hash before manual dispatch. If
+   another trusted maintainer becomes available, add mandatory independent PR and
+   environment reviewers and prevent self-review; never weaken existing controls
+   to make a release run.
 4. Have the coordinator approve the exact version, private application source
    commit, complete public payload, independently reviewed per-edition filename
    allowlist, and manifest SHA256. Update each edition's `payload_files` in the
@@ -146,7 +152,9 @@ test build; do not use wildcard upload commands.
    ```
 
    That directory must contain exactly the four production ZIPs and manifest.
-   Replace the approval markers; do not use guessed values.
+   Replace the approval markers; do not use guessed values. Offline `validate`
+   accepts a disabled policy so artifacts can be audited **without** enabling
+   publishing; exact reviewed payload lists and pins are still mandatory.
 3. Use the existing locally authenticated `gh` session to create a non-prerelease
    **draft**, targeting the **exact protected distribution commit** that will
    execute the signing workflow, not the private application's commit. Explicitly
@@ -156,8 +164,9 @@ test build; do not use wildcard upload commands.
    source commit and manifest SHA256 and explicitly checking `confirm_publish`.
    A dispatch from a feature branch, an unprotected ref, a disabled policy, absent
    cosign pin, missing payload policy, or missing OIDC permission cannot publish.
-   The environment reviewer must independently compare the exact inputs to the
-   approved handoff, not rubber-stamp a manual dispatch.
+   The coordinator must compare the exact inputs to the approved handoff before
+   dispatch. If required environment reviewers are configured later, they must
+   also compare these inputs, not rubber-stamp the dispatch.
 5. The runner downloads the five assets, rejects extras, checks exact manifest
    bytes and all archive/payload hashes, and signs the ZIPs and extracted EXEs.
    It also signs `release-manifest.json`, `provenance.json` and `SHA256SUMS`.

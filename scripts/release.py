@@ -109,12 +109,13 @@ def archive_names(version):
     }
 
 
-def validate_policy(policy):
+def validate_policy(policy, require_enabled=True):
     exact_keys(policy, ("schema_version", "enabled", "cosign_version",
                         "cosign_linux_amd64_sha256", "payload_files"), "Policy")
     require(type(policy["schema_version"]) is int and policy["schema_version"] == 1,
             "Unsupported policy schema")
-    require(policy["enabled"] is True, "Release policy is disabled")
+    require(type(policy["enabled"]) is bool, "Policy enabled flag must be boolean")
+    require(not require_enabled or policy["enabled"], "Release policy is disabled")
     validate_tool_pin(policy)
     exact_keys(policy["payload_files"], EDITIONS, "Edition payload policy")
     for edition, paths in policy["payload_files"].items():
@@ -218,11 +219,11 @@ def validate_archive(path, files, allowed_paths, exe_destination=None):
 
 
 def validate_handoff(directory, policy, version, source_commit, manifest_hash,
-                     exe_directory=None, exact_assets=True):
+                     exe_directory=None, exact_assets=True, require_enabled=True):
     names = archive_names(version)
     require(valid_hash(source_commit, 40), "An exact lowercase source commit is required")
     require(valid_hash(manifest_hash), "An independently approved manifest SHA256 is required")
-    validate_policy(policy)
+    validate_policy(policy, require_enabled=require_enabled)
     directory = Path(directory)
     expected = {*names.values(), "release-manifest.json"}
     if exact_assets:
@@ -487,7 +488,7 @@ def main():
     try:
         if args.command == "validate":
             validate_handoff(args.directory, read_json(args.policy), args.version,
-                             args.source_commit, args.manifest_sha256)
+                             args.source_commit, args.manifest_sha256, require_enabled=False)
             print("Production handoff matches the reviewed policy and approved manifest.")
         elif args.command == "publish":
             publish(args.policy, args.work)

@@ -77,6 +77,14 @@ class HandoffTests(unittest.TestCase):
         with self.assertRaisesRegex(release.ReleaseError, "disabled"):
             self.validate()
 
+    def test_disabled_policy_can_be_audited_without_enabling_publish(self):
+        self.policy["enabled"] = False
+        release.validate_handoff(
+            self.directory, self.policy, self.version, self.commit, self.manifest_hash,
+            require_enabled=False,
+        )
+        self.assertFalse(self.policy["enabled"])
+
     def test_extra_staged_asset_is_rejected(self):
         (self.directory / "PixelBridge-v1.2.0-Pro-LOCAL-TEST-win-x64.zip").write_bytes(b"")
         with self.assertRaisesRegex(release.ReleaseError, "exactly four"):

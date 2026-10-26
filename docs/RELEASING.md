@@ -249,6 +249,17 @@ test build; do not use wildcard upload commands.
    remove the generated outputs before retrying; never delete the whole release
    or blindly replace assets to make a check pass.
 
+Unpublished drafts do not have a git tag, and GitHub's REST release-by-tag endpoint
+can return 404 for them. The validator instead discovers releases through the
+authenticated, fully paginated release list, requires exactly one exact pending
+tag-name match, and fetches it by immutable release ID. It rejects missing or
+ambiguous matches, published releases and prereleases, and pins that same ID
+through every repeated signing/upload/final-verification check. This does not
+create or move a tag. The explicit `gh release download/upload/edit <tag>` paths
+also support pending draft tags through the CLI's shared draft lookup and
+release-ID API calls; successful staging/upload and downloaded-byte validation
+against the actual five-asset draft establish that contract before dispatch.
+
 The release tag must be unused. The workflow refuses an existing tag before
 signing and again before publication, targets the exact distribution workflow
 commit, checks that protected main has not moved, and checks the new tag's commit

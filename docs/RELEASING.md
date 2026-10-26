@@ -2,15 +2,23 @@
 
 ## Status and prerequisites
 
-The **repository policy gate is enabled**, but **signing remains disabled**; this
-is not evidence of a shipped release. The coordinator approved the version
-**1.2.0** candidate's exact source commit, manifest hash and four customer ZIP
-payloads, and separately authorized only this repository gate change. The local
-customer export passed independent read-only validation. The `production-release`
-environment remains `RELEASE_SIGNING_ENABLED=false`; staging, dispatch, signing
-and publication are not authorized. No production blobs have been signed.
-Separate authorization for the exact final protected distribution/workflow commit
-is still required, with the review and acceptance limitations below retained.
+**[PixelBridge 1.2.0](https://github.com/QuasarLI/PixelBridge-Distribution/releases/tag/v1.2.0)
+was signed and published on 2026-10-26**, and post-publication local verification
+is complete. The successful
+[workflow_dispatch run 40334369634](https://github.com/QuasarLI/PixelBridge-Distribution/actions/runs/40334369634)
+executed the [release workflow](https://github.com/QuasarLI/PixelBridge-Distribution/blob/54450c3fcec56423c0521c9506d312fad8fbbfca/.github/workflows/release.yml)
+at exact protected distribution commit
+[`54450c3fcec56423c0521c9506d312fad8fbbfca`](https://github.com/QuasarLI/PixelBridge-Distribution/commit/54450c3fcec56423c0521c9506d312fad8fbbfca).
+The release tag and provenance's `distribution_commit` record that workflow
+commit, not subsequent documentation-only commits on `main`.
+
+The **repository policy gate remains enabled**. After the completed release and
+local verification, the `production-release` environment was restored to
+`RELEASE_SIGNING_ENABLED=false` and checked. This blocks **future signing
+dispatches**; it does not undo the published release. Future staging, enablement,
+dispatch, signing and publication require separate exact-commit coordinator
+authorization under the prerequisites below. The review and acceptance limits
+remain in force.
 
 1. Review current official [Sigstore blob signing documentation](https://docs.sigstore.dev/cosign/signing/signing_with_blobs/),
    [verification documentation](https://docs.sigstore.dev/cosign/verifying/verify/),
@@ -67,8 +75,8 @@ permissions are requested. Checkout does not persist credentials.
 
 ## Exact producer contract
 
-Version `1.2.0` and tag `v1.2.0` are **approved naming**, not artifact publication
-approval.
+Version `1.2.0` and tag `v1.2.0` identify the **published release**. Reusing these
+names is not authorization to stage, replace or republish its assets.
 Version strings must be stable `MAJOR.MINOR.PATCH` without a leading `v`.
 The four archive names, with case preserved, are:
 
@@ -84,7 +92,7 @@ explicitly reviewed runtime assets, public documentation, controller mappings an
 fresh templates. All usable Xbox mappings/profiles are included in every edition.
 Paid production builds remain license-gated.
 
-The intended v1.2.0 payload in [release-policy.json](../release-policy.json) has
+The published v1.2.0 payload in [release-policy.json](../release-policy.json) has
 14 files common to all editions: the native EXE, Backend and Performance runtime
 PowerShell scripts, original logo/icon, controller documentation, five RetroArch
 mappings and the common XInput configuration, README and third-party notices.
@@ -92,13 +100,13 @@ FreewithAds alone adds `Assets/AdGuard-728x90.png` for 15 files. There is no sep
 firewall script. These paths are not publication approval; compare every final archive entry and
 hash against the reviewed private build and manifest before enabling publication.
 
-### Current candidate review
+### Published v1.2.0 payload review
 
-The candidate is version `1.2.0`, private application source commit
+The published release is version `1.2.0`, private application source commit
 `6322a75cb58544401b8ae6a864ddf98cd558c45a`, and exact manifest SHA256
 `7d480908eafca07ae04fa5ec6e802923200f1253884307ec28e21a086507c424`.
-Those identifiers pin the content-approved candidate, not coordinator staging,
-dispatch or signing authorization.
+Those identifiers pin the released payload; they do not authorize a future
+staging, dispatch or signing run.
 
 Independent read-only inspection of the local customer export confirmed exactly
 four production ZIPs and the manifest; each ZIP's complete entry list, sizes,
@@ -136,9 +144,13 @@ Review limits remain important: this did not execute the app or scripts, alter a
 installation, independently rebuild the private source, prove complete binary
 safety, exercise a real customer's Gumroad activation, or test Xbox/TV/controller
 hardware. The package documentation explicitly calls controller mappings
-reference/schema-tested rather than gameplay-tested. There is no reproducible
-build attestation or end-to-end signing evidence yet. Final release authorization
-must acknowledge those limits; do not mutate or repack these completed ZIP bytes.
+reference/schema-tested rather than gameplay-tested. No independent full-binary
+rebuild/audit, real-customer key activation or actual emulator/controller/gameplay/
+HDMI/audio/clean-PC pairing acceptance was established. There is no reproducible
+build attestation. The completed signing run and post-publication verification
+establish signed-byte identity, not those acceptance results. Future release
+authorization must acknowledge these limits; do not mutate or repack the published
+ZIP bytes.
 
 The ZIP producer must omit directory entries, comments, ZIP extra fields, data
 descriptors, prefixes/trailing data, encrypted entries and symlinks. Use a seekable
@@ -203,9 +215,11 @@ user-specific data. Do not touch the existing local CloudPlay installation.
 
 ## Staging and signing
 
-The steps below are a future procedure, not current authorization. Do not stage
-or dispatch while exact-commit coordinator authorization is pending, and keep
-`RELEASE_SIGNING_ENABLED=false`.
+The steps below remain the procedure for a **future separately authorized
+release**, not instructions to rerun published v1.2.0. Keep
+`RELEASE_SIGNING_ENABLED=false` until new exact-commit coordinator authorization
+permits enablement and the release steps. Corrections require a new version;
+never restage or replace the published v1.2.0 assets.
 
 A draft release in a **public repository is not a private storage/security
 boundary**. Stage only vetted production artifacts whose publication is approved.
@@ -273,7 +287,7 @@ and never replace published bytes. A correction is a new version.
 
 ## Final public outputs and local delivery
 
-There are exactly **18 release assets**: four ZIPs; manifest, provenance and
+Published v1.2.0 has exactly **18 release assets**: four ZIPs; manifest, provenance and
 checksums; a Sigstore JSON bundle for each of those seven files; and four bundles
 for the `PixelBridge.exe` already inside the ZIPs. No separate unlocked or ordinary
 EXE is uploaded. EXE bundle naming is:
@@ -288,14 +302,24 @@ manifest hash and cosign pin. This is **release-signing provenance**, not a clai
 that the public signing workflow built the private source or that the binaries
 were reproducibly built from it.
 
-After the real run succeeds, download the final assets from the published release
-into a clean local distribution directory. Verify every ZIP's Sigstore bundle,
-checksums, manifest and extracted EXE as described in [VERIFYING.md](VERIFYING.md).
-Only those exact verified ZIP bytes may be copied to Gumroad. Do not recompress,
-change license files, or otherwise modify a signed ZIP.
+For v1.2.0, all 18 published assets were downloaded into a clean local distribution
+directory. All 11 blob signatures (four ZIPs, four contained EXEs and three
+metadata files) passed using the official immutable cosign v3.1.4 portable
+verifier, pinned against release asset metadata and checksums as recorded in
+[VERIFYING.md](VERIFYING.md). Manifest/provenance/run/source/workflow/checksum
+agreement and server asset byte hashes passed; all four original ZIP byte hashes
+were unchanged. Temporary verifier and extracted EXEs were removed. No application
+was executed and no live installation was changed.
+
+For each future release, repeat post-publication download and verification of all
+assets as described in [VERIFYING.md](VERIFYING.md). Only those exact verified ZIP
+bytes may be copied to Gumroad. Do not recompress, change license files, or
+otherwise modify a signed ZIP. Publication and verification do **not** establish
+that a checkout upload or Gumroad listing is complete.
 
 Report the actual public release URL, signing workflow run URL, source/distribution
-commits, certificate identity, artifact hashes and absolute local paths only after
-publication and local verification succeed. Keep the separately authorized private
+commits, certificate identity and artifact hashes only after publication and local
+verification succeed. Keep absolute local paths and user-specific data in private
+handoffs, never public documentation. Keep the separately authorized private
 Pro test path clearly separate; it is not signed or verified by this public
 pipeline. Never invent download links or claim a staged draft is a shipped release.

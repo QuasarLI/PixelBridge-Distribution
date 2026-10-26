@@ -1,13 +1,42 @@
 # Verify PixelBridge downloads
 
-**No signed release exists from this prepared pipeline yet.** Commands below
-describe the production verification contract. A passing infrastructure check is
-not evidence of an application signing run or a published release.
+**[PixelBridge 1.2.0](https://github.com/QuasarLI/PixelBridge-Distribution/releases/tag/v1.2.0)
+was signed and published on 2026-10-26.**
+The successful [signing run 40334369634](https://github.com/QuasarLI/PixelBridge-Distribution/actions/runs/40334369634)
+used `workflow_dispatch` at distribution/workflow source commit
+[`54450c3fcec56423c0521c9506d312fad8fbbfca`](https://github.com/QuasarLI/PixelBridge-Distribution/commit/54450c3fcec56423c0521c9506d312fad8fbbfca);
+the [exact release workflow](https://github.com/QuasarLI/PixelBridge-Distribution/blob/54450c3fcec56423c0521c9506d312fad8fbbfca/.github/workflows/release.yml)
+is pinned to that commit, not a later documentation-only `main` commit.
+
+The published [manifest](https://github.com/QuasarLI/PixelBridge-Distribution/releases/download/v1.2.0/release-manifest.json),
+[provenance](https://github.com/QuasarLI/PixelBridge-Distribution/releases/download/v1.2.0/provenance.json)
+and [SHA256SUMS](https://github.com/QuasarLI/PixelBridge-Distribution/releases/download/v1.2.0/SHA256SUMS)
+have matching Sigstore bundles in the release. The private application source
+commit is `6322a75cb58544401b8ae6a864ddf98cd558c45a`; the exact manifest SHA256 is
+`7d480908eafca07ae04fa5ec6e802923200f1253884307ec28e21a086507c424`.
+
+Post-publication local verification downloaded all **18 assets** and passed all
+**11 blob signatures**: four ZIPs, their four contained EXEs and three metadata
+files. Metadata, provenance, run/source/workflow identifiers, checksums and
+server asset byte hashes agreed; all four original ZIP byte hashes were unchanged.
+No raw EXE, private unlocked test build or private source was published. This
+verification did not execute the application or alter a live installation.
+Verify your own downloads before use; a passing infrastructure check alone is not
+release or download verification.
 
 Obtain a current trusted **cosign v3** installation using the official
 [Sigstore installation guidance](https://docs.sigstore.dev/cosign/system_config/installation/).
 Do not trust an executable or checksum merely because it sits beside an app
 download. Follow cosign's official verification guidance for its own installation.
+
+The v1.2.0 post-publication check used the official portable **cosign v3.1.4**
+Windows amd64 verifier, pinned against both the
+[immutable release asset metadata](https://api.github.com/repos/sigstore/cosign/releases/tags/v3.1.4)
+and official
+[`cosign_checksums.txt`](https://github.com/sigstore/cosign/releases/download/v3.1.4/cosign_checksums.txt).
+Its SHA256 was
+`cbe953787074611f1334cbf37dc1cf953995bb8c45398eb4fc7bb781d29c1f2a`.
+The temporary verifier and extracted EXEs were removed after verification.
 
 The only accepted certificate identity is the following **exact string**, not a
 wildcard or a repository-wide regular expression:
@@ -97,3 +126,8 @@ Windows may still show **Unknown Publisher** or a **SmartScreen** warning. Do no
 tell users that Sigstore removes these warnings or instruct them to disable their
 security protections. A valid signature identifies the workflow and content;
 it does not establish that software is harmless, licensed, or free of bugs.
+The release review did not independently rebuild or fully audit the binaries,
+establish real-customer activation, or establish actual emulator, controller,
+gameplay, HDMI, audio or clean-PC pairing acceptance. Controller mappings remain
+reference/schema-tested, not gameplay-tested. A verified release is not evidence
+of a completed Gumroad upload/listing or Windows reputation.

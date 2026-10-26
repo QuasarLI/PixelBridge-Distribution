@@ -277,7 +277,71 @@ class HandoffTests(unittest.TestCase):
         ):
             release.publish(self.directory / "policy.json", self.directory / "work")
 
-    def exercise_publish(self, fail_verification=False, mutate_draft=False):
+    def test_draft_discovery_paginates_and_fetches_exact_match_by_id(self):
+        draft = {"id": 42, "tag_name": "v1.2.0", "draft": True, "prerelease": False}
+        pages = [[{"id": 1, "tag_name": "v1.2.0-other"}], [draft]]
+        with mock.patch.object(release, "run", return_value=json.dumps(pages)) as command, \
+                mock.patch.object(release, "gh_json", return_value=draft) as api:
+            self.assertEqual(release.get_release("v1.2.0", 42), draft)
+        command.assert_called_once_with(
+            "gh", "api", f"repos/{release.REPOSITORY}/releases?per_page=100",
+            "--paginate", "--slurp",
+        )
+        api.assert_called_once_with(f"repos/{release.REPOSITORY}/releases/42")
+
+    def test_draft_discovery_rejects_missing_and_duplicate_exact_matches(self):
+        draft = {"id": 42, "tag_name": "v1.2.0", "draft": True, "prerelease": False}
+        cases = ([], [[]], [[{"id": 1, "tag_name": "v1.2.0-other"}]],
+                 [[draft], [{**draft, "id": 43}]])
+        for pages in cases:
+            with self.subTest(pages=pages), \
+                    mock.patch.object(release, "run", return_value=json.dumps(pages)), \
+                    mock.patch.object(release, "gh_json") as api, \
+                    self.assertRaisesRegex(release.ReleaseError, "Exactly one release"):
+                try:
+                    release.get_release("v1.2.0")
+                finally:
+                    api.assert_not_called()
+
+    def test_draft_discovery_rejects_published_or_prerelease_state_at_each_read(self):
+        draft = {"id": 42, "tag_name": "v1.2.0", "draft": True, "prerelease": False}
+        for changed in ({**draft, "draft": False}, {**draft, "prerelease": True}):
+            for change_discovery in (True, False):
+                with self.subTest(changed=changed, discovery=change_discovery), \
+                        mock.patch.object(release, "run", return_value=json.dumps([
+                            [changed if change_discovery else draft]
+                        ])), mock.patch.object(release, "gh_json", return_value=changed), \
+                        self.assertRaisesRegex(release.ReleaseError, "non-prerelease DRAFT"):
+                    release.get_release("v1.2.0")
+
+    def test_draft_discovery_rejects_changed_release_id(self):
+        draft = {"id": 43, "tag_name": "v1.2.0", "draft": True, "prerelease": False}
+        with mock.patch.object(release, "run", return_value=json.dumps([[draft]])), \
+                mock.patch.object(release, "gh_json") as api, \
+                self.assertRaisesRegex(release.ReleaseError, "release ID changed"):
+            try:
+                release.get_release("v1.2.0", 42)
+            finally:
+                api.assert_not_called()
+
+    def test_draft_fetch_rejects_changed_identity(self):
+        draft = {"id": 42, "tag_name": "v1.2.0", "draft": True, "prerelease": False}
+        for fetched in ({**draft, "id": 43}, {**draft, "tag_name": "v1.2.1"}):
+            with self.subTest(fetched=fetched), \
+                    mock.patch.object(release, "run", return_value=json.dumps([[draft]])), \
+                    mock.patch.object(release, "gh_json", return_value=fetched), \
+                    self.assertRaisesRegex(release.ReleaseError, "identity differs"):
+                release.get_release("v1.2.0")
+
+    def test_draft_discovery_rejects_malformed_pages(self):
+        for pages in ({}, [{"id": 42}], [[{}]], [[{"id": True, "tag_name": "v1.2.0"}]]):
+            with self.subTest(pages=pages), \
+                    mock.patch.object(release, "run", return_value=json.dumps(pages)), \
+                    self.assertRaises(release.ReleaseError):
+                release.get_release("v1.2.0")
+
+    def exercise_publish(self, fail_verification=False, mutate_draft=False,
+                         replace_draft=False):
         remote = {path.name: path.read_bytes() for path in self.directory.iterdir()}
         distribution_commit = "e" * 40
         staged = {
@@ -311,11 +375,17 @@ class HandoffTests(unittest.TestCase):
             commands.append(args)
             if args[:3] == ("git", "rev-parse", "HEAD"):
                 return distribution_commit
+            if args[:3] == ("gh", "api",
+                             f"repos/{release.REPOSITORY}/releases?per_page=100"):
+                self.assertEqual(args[3:], ("--paginate", "--slurp"))
+                return json.dumps([[copy.deepcopy(staged)]])
             if args[0] == "cosign":
                 if args[1] == "sign-blob":
                     Path(args[args.index("--bundle") + 1]).write_bytes(b"synthetic bundle")
                     if mutate_draft:
                         staged["assets"][0]["updated_at"] = "changed-after-validation"
+                    if replace_draft:
+                        staged["id"] = 43
                 elif args[1] == "verify-blob":
                     verification_count += 1
                     self.assertEqual(args[args.index("--certificate-identity") + 1],
@@ -380,7 +450,7 @@ class HandoffTests(unittest.TestCase):
                 mock.patch.object(release, "run", side_effect=fake_run), \
                 mock.patch.object(release, "install_cosign", return_value=Path("cosign")), \
                 redirect_stdout(io.StringIO()):
-            if fail_verification or mutate_draft:
+            if fail_verification or mutate_draft or replace_draft:
                 with self.assertRaises(release.ReleaseError):
                     release.publish(policy_path, self.directory / "work")
                 self.assertTrue(staged["draft"])
@@ -402,6 +472,9 @@ class HandoffTests(unittest.TestCase):
 
     def test_concurrent_draft_mutation_leaves_draft_unpublished(self):
         self.exercise_publish(mutate_draft=True)
+
+    def test_draft_replacement_during_signing_leaves_release_unpublished(self):
+        self.exercise_publish(replace_draft=True)
 
 
 if __name__ == "__main__":

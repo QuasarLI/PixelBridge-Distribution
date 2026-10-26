@@ -286,9 +286,27 @@ def gh_json(endpoint):
     return json.loads(run("gh", "api", endpoint))
 
 
-def get_release(tag):
-    release = gh_json(f"repos/{REPOSITORY}/releases/tags/{tag}")
-    require(release["draft"] is True and release["prerelease"] is False,
+def get_release(tag, release_id=None):
+    # The release-by-tag REST endpoint cannot find an unpublished, tagless draft.
+    pages = json.loads(run("gh", "api", f"repos/{REPOSITORY}/releases?per_page=100",
+                          "--paginate", "--slurp"))
+    require(type(pages) is list and all(type(page) is list for page in pages),
+            "Unexpected paginated release discovery response")
+    releases = [item for page in pages for item in page]
+    require(all(type(item) is dict and type(item.get("tag_name")) is str and
+                type(item.get("id")) is int and item["id"] > 0 for item in releases),
+            "Unexpected release discovery entry")
+    matches = [item for item in releases if item["tag_name"] == tag]
+    require(len(matches) == 1, "Exactly one release must match the requested pending tag")
+    match = matches[0]
+    require(release_id is None or match["id"] == release_id,
+            "Draft release ID changed during processing")
+    require(match.get("draft") is True and match.get("prerelease") is False,
+            "Only a non-prerelease DRAFT may be processed")
+    release = gh_json(f"repos/{REPOSITORY}/releases/{match['id']}")
+    require(type(release) is dict and release.get("id") == match["id"] and
+            release.get("tag_name") == tag, "Fetched release identity differs from discovery")
+    require(release.get("draft") is True and release.get("prerelease") is False,
             "Only a non-prerelease DRAFT may be processed")
     return release
 
@@ -422,7 +440,7 @@ def publish(policy_path, work):
         bundle = outgoing / f"{name}.sigstore.json"
         run(str(cosign), "sign-blob", "--yes", "--bundle", str(bundle), str(blob))
         verify_blob(cosign, blob, bundle)
-    current = get_release(tag)
+    current = get_release(tag, release["id"])
     require(current["id"] == release["id"] and
             current["target_commitish"] == distribution_commit and
             asset_snapshot(current) == original, "Draft changed during signing")
@@ -430,7 +448,7 @@ def publish(policy_path, work):
     run("gh", "release", "upload", tag, "--repo", REPOSITORY,
         *(str(path) for path in outputs))
     expected_final = expected | {path.name for path in outputs}
-    current = get_release(tag)
+    current = get_release(tag, release["id"])
     require(current["id"] == release["id"] and
             current["target_commitish"] == distribution_commit and
             set(asset_snapshot(current)) == expected_final and
@@ -448,7 +466,9 @@ def publish(policy_path, work):
         for name in blobs:
             blob = executables / name if name.endswith(".exe") else downloaded / name
             verify_blob(cosign, blob, downloaded / f"{name}.sigstore.json")
-    require(asset_snapshot(get_release(tag)) == asset_snapshot(current),
+    final = get_release(tag, release["id"])
+    require(final["target_commitish"] == distribution_commit and
+            asset_snapshot(final) == asset_snapshot(current),
             "Draft changed during final verification")
     require_release_source(distribution_commit)
     require_unused_tag(tag)

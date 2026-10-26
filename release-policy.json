@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "enabled": false,
+  "enabled": true,
   "candidate": {
     "version": "1.2.0",
     "source_commit": "6322a75cb58544401b8ae6a864ddf98cd558c45a",

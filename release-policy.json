@@ -1,6 +1,11 @@
 {
   "schema_version": 1,
   "enabled": false,
+  "candidate": {
+    "version": "1.2.0",
+    "source_commit": "6322a75cb58544401b8ae6a864ddf98cd558c45a",
+    "manifest_sha256": "7d480908eafca07ae04fa5ec6e802923200f1253884307ec28e21a086507c424"
+  },
   "cosign_version": "v3.1.4",
   "cosign_linux_amd64_sha256": "424e2c97d0b45fd7a6b608a87f090f35633f4c23ece5f092d48bba11aaf4bbfa",
   "payload_files": {

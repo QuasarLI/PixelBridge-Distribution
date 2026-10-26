@@ -28,6 +28,11 @@ class HandoffTests(unittest.TestCase):
         self.policy = {
             "schema_version": 1,
             "enabled": True,
+            "candidate": {
+                "version": self.version,
+                "source_commit": self.commit,
+                "manifest_sha256": "0" * 64,
+            },
             "cosign_version": "v3.0.0",
             "cosign_linux_amd64_sha256": "b" * 64,
             "payload_files": {edition: ["PixelBridge.exe"] for edition in release.EDITIONS},
@@ -64,6 +69,7 @@ class HandoffTests(unittest.TestCase):
         self.manifest_path = self.directory / "release-manifest.json"
         self.manifest_path.write_text(json.dumps(self.manifest), encoding="utf-8")
         self.manifest_hash = release.sha256(self.manifest_path)
+        self.policy["candidate"]["manifest_sha256"] = self.manifest_hash
 
     def validate(self):
         return release.validate_handoff(self.directory, self.policy, self.version,
@@ -71,6 +77,23 @@ class HandoffTests(unittest.TestCase):
 
     def test_exact_handoff_is_accepted(self):
         self.assertEqual(self.validate(), self.manifest)
+
+    def test_dispatch_inputs_must_match_pinned_candidate(self):
+        for key, value in (("version", "1.2.1"), ("source_commit", "f" * 40),
+                           ("manifest_sha256", "e" * 64)):
+            with self.subTest(key=key):
+                original = self.policy["candidate"][key]
+                self.policy["candidate"][key] = value
+                try:
+                    with self.assertRaisesRegex(release.ReleaseError, "Inputs differ"):
+                        self.validate()
+                finally:
+                    self.policy["candidate"][key] = original
+
+    def test_candidate_fields_are_strictly_validated(self):
+        self.policy["candidate"]["manifest_sha256"] = "not-a-hash"
+        with self.assertRaisesRegex(release.ReleaseError, "Invalid pinned release candidate"):
+            self.validate()
 
     def test_disabled_policy_cannot_publish(self):
         self.policy["enabled"] = False

@@ -4,9 +4,10 @@
 
 This is **disabled release preparation**, not evidence of a shipped release.
 Version **1.2.0** and the production naming contract are approved. The disabled
-policy records the producer's intended payload paths; final ZIPs, source commit,
-hashes and independent payload review are still pending. No production blobs have
-been signed. Do not enable signing until the following prerequisites are complete.
+policy records the candidate's exact source commit, manifest hash and payload
+paths. The local customer export passed independent read-only validation; final
+coordinator publication approval is still pending. No production blobs have been
+signed. Do not enable signing until the following prerequisites are complete.
 
 1. Review current official [Sigstore blob signing documentation](https://docs.sigstore.dev/cosign/signing/signing_with_blobs/),
    [verification documentation](https://docs.sigstore.dev/cosign/verifying/verify/),
@@ -41,9 +42,11 @@ been signed. Do not enable signing until the following prerequisites are complet
    to make a release run.
 4. Have the coordinator approve the exact version, private application source
    commit, complete public payload, independently reviewed per-edition filename
-   allowlist, and manifest SHA256. Update each edition's `payload_files` in the
-   protected policy. A matching checksum or a builder-supplied filename is **not**
-   evidence that a file is appropriate to publish.
+   allowlist, and manifest SHA256. The policy's `candidate` pins the version,
+   source commit and manifest digest; all dispatch inputs must match those pins.
+   Changing a candidate requires another reviewed policy change. A matching
+   checksum or a builder-supplied filename is **not** evidence that a file is
+   appropriate to publish.
 5. Run `python -m unittest discover -s tests -v`, validate the actual handoff, review
    this workflow end-to-end, and obtain final coordinator authorization. Only then
    set policy `enabled` and environment variable `RELEASE_SIGNING_ENABLED` to `true`.
@@ -79,9 +82,55 @@ The intended v1.2.0 payload in [release-policy.json](../release-policy.json) has
 PowerShell scripts, original logo/icon, controller documentation, five RetroArch
 mappings and the common XInput configuration, README and third-party notices.
 FreewithAds alone adds `Assets/AdGuard-728x90.png` for 15 files. There is no separate
-firewall script. These are producer-declared intended paths, **not approval of
-their contents**; compare every final archive entry and hash against the reviewed
-private build and manifest before enabling publication.
+firewall script. These paths are not publication approval; compare every final archive entry and
+hash against the reviewed private build and manifest before enabling publication.
+
+### Current candidate review
+
+The candidate is version `1.2.0`, private application source commit
+`6322a75cb58544401b8ae6a864ddf98cd558c45a`, and exact manifest SHA256
+`7d480908eafca07ae04fa5ec6e802923200f1253884307ec28e21a086507c424`.
+Those identifiers record a candidate, not coordinator signing authorization.
+
+Independent read-only inspection of the local customer export confirmed exactly
+four production ZIPs and the manifest; each ZIP's complete entry list, sizes,
+hashes and strict container structure passed the distribution validator. All
+13 common non-EXE files have identical hashes in all four editions. All six
+controller profile/config files are present in every edition.
+
+Both runtime scripts and all shipped text documentation/mappings were read.
+The Backend script parses bounded local settings with DTDs disabled, checks
+Sunshine over loopback, starts only user-selected local executables, opens Xbox
+in the dedicated Edge profile, and offers the explicit scoped firewall action.
+That firewall path checks the previewed settings hash, administrative elevation,
+an existing private IPv4 address/subnet, exact Sunshine executable and Private
+profile; it creates only two named TCP/UDP rules and will not overwrite existing
+rules. No router, VPN or global security-policy change appears in those scripts.
+The Performance script targets the dedicated Xbox Edge process family and changes
+only Normal to AboveNormal priority, with PID/start-time-aware undo records.
+
+Read-only managed metadata inspection found x64 CLI executables declaring version
+`1.2.0`, the correct edition constant, `IsLocalTest=false`, and only the embedded
+PixelBridge icon resource. Compiled entitlement getters were inspected: paid
+builds fall back to Free without a cache or with revoked state. This is not a
+full binary decompilation or a proof that a trusted purchase created the cache.
+The EXEs have no Authenticode signature. PNG inspection found only ordinary image
+chunks, no text/EXIF metadata or trailing bytes. FreewithAds alone contains the
+disclosed AdGuard banner.
+
+No live settings, browser data, license cache, Sunshine state, source tree, local
+test artifact or new Gumroad marketing icon is in the allowlisted export. Reviewed
+text contains public project/provider and checkout links, public product IDs and
+the disclosed affiliate identifier, not a seller credential. No customer secrets
+were supplied or used for this review.
+
+Review limits remain important: this did not execute the app or scripts, alter an
+installation, independently rebuild the private source, prove complete binary
+safety, exercise a real customer's Gumroad activation, or test Xbox/TV/controller
+hardware. The package documentation explicitly calls controller mappings
+reference/schema-tested rather than gameplay-tested. There is no reproducible
+build attestation or end-to-end signing evidence yet. Final release authorization
+must acknowledge those limits; do not mutate or repack these completed ZIP bytes.
 
 The ZIP producer must omit directory entries, comments, ZIP extra fields, data
 descriptors, prefixes/trailing data, encrypted entries and symlinks. Use a seekable

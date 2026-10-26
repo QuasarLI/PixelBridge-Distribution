@@ -115,6 +115,13 @@ successful GitHub run. A source commit in this private repository is a publisher
 declaration, not a publicly reproducible build attestation. A SHA256 alone proves
 only byte equality; it does not establish who produced or approved those bytes.
 
+For the non-bundled contract starting with `1.3.0`, require manifest
+`schema_version` to be `1` and `distribution_mode` to be exactly `nonbundled` in
+both the signed manifest and signed provenance. Sunshine is not included; an
+independent upstream download is not covered by PixelBridge's signatures. The
+published `1.2.0` manifest and provenance predate this field and remain unchanged.
+This contract description does not establish that a newer release is published.
+
 ## Distribution and Windows trust
 
 For Gumroad or other redistribution, use only **identical final released ZIP bytes**

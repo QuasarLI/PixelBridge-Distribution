@@ -75,8 +75,89 @@ class HandoffTests(unittest.TestCase):
         return release.validate_handoff(self.directory, self.policy, self.version,
                                         self.commit, self.manifest_hash)
 
+    def use_nonbundled_handoff(self, version="1.3.0"):
+        names = release.archive_names(version)
+        for artifact in self.manifest["artifacts"]:
+            name = names[artifact["edition"]]
+            (self.directory / artifact["file"]).rename(self.directory / name)
+            artifact["file"] = name
+        self.version = version
+        self.policy["candidate"]["version"] = version
+        self.manifest["version"] = version
+        self.manifest["distribution_mode"] = "nonbundled"
+        self.save_manifest()
+
     def test_exact_handoff_is_accepted(self):
         self.assertEqual(self.validate(), self.manifest)
+
+    def test_explicit_nonbundled_handoff_is_accepted(self):
+        self.use_nonbundled_handoff()
+        self.assertEqual(self.validate(), self.manifest)
+
+    def test_nonbundled_mode_is_required_from_1_3(self):
+        for version in ("1.3.0", "1.3.1", "1.10.0", "2.0.0"):
+            with self.subTest(version=version):
+                self.use_nonbundled_handoff(version)
+                del self.manifest["distribution_mode"]
+                self.save_manifest()
+                with self.assertRaisesRegex(release.ReleaseError, "unexpected or missing"):
+                    self.validate()
+
+    def test_other_distribution_modes_and_types_are_rejected(self):
+        self.use_nonbundled_handoff()
+        for mode in ("bundled", "non-bundled", "Nonbundled", "", None, True, {}, []):
+            with self.subTest(mode=mode):
+                self.manifest["distribution_mode"] = mode
+                self.save_manifest()
+                with self.assertRaisesRegex(release.ReleaseError, "explicit nonbundled"):
+                    self.validate()
+
+    def test_legacy_manifest_cannot_add_distribution_mode(self):
+        self.manifest["distribution_mode"] = "nonbundled"
+        self.save_manifest()
+        with self.assertRaisesRegex(release.ReleaseError, "unexpected or missing"):
+            self.validate()
+
+    def test_nonbundled_manifest_rejects_sidecar_and_unknown_fields(self):
+        self.use_nonbundled_handoff()
+        for field in ("third_party_sources", "sidecar", "inventory", "local_path"):
+            with self.subTest(field=field):
+                self.manifest[field] = []
+                self.save_manifest()
+                with self.assertRaisesRegex(release.ReleaseError, "unexpected or missing"):
+                    self.validate()
+                del self.manifest[field]
+
+    def test_nonbundled_manifest_does_not_accept_schema_2(self):
+        self.use_nonbundled_handoff()
+        self.manifest["schema_version"] = 2
+        self.save_manifest()
+        with self.assertRaisesRegex(release.ReleaseError, "Unsupported manifest schema"):
+            self.validate()
+
+    def test_nonbundled_mode_does_not_allow_installer_assets(self):
+        self.use_nonbundled_handoff()
+        (self.directory / "sunshine-installer.msi").write_bytes(b"not a release artifact")
+        with self.assertRaisesRegex(release.ReleaseError, "exactly four"):
+            self.validate()
+
+    def test_nonbundled_mode_does_not_expand_payload_allowlist(self):
+        self.use_nonbundled_handoff()
+        artifact = self.manifest["artifacts"][0]
+        path = self.directory / artifact["file"]
+        payload = b"unapproved installer fixture"
+        with zipfile.ZipFile(path, "a") as archive:
+            archive.writestr("installer.msi", payload)
+        artifact["size_bytes"] = path.stat().st_size
+        artifact["sha256"] = release.sha256(path)
+        artifact["files"].append({
+            "path": "installer.msi",
+            "size_bytes": len(payload),
+            "sha256": hashlib.sha256(payload).hexdigest(),
+        })
+        self.save_manifest()
+        with self.assertRaisesRegex(release.ReleaseError, "reviewed allowlist"):
+            self.validate()
 
     def test_dispatch_inputs_must_match_pinned_candidate(self):
         for key, value in (("version", "1.2.1"), ("source_commit", "f" * 40),
@@ -348,9 +429,11 @@ class HandoffTests(unittest.TestCase):
             "id": 42,
             "draft": True,
             "prerelease": False,
-            "tag_name": "v1.2.0",
+            "tag_name": f"v{self.version}",
             "target_commitish": distribution_commit,
-            "html_url": "https://github.com/QuasarLI/PixelBridge-Distribution/releases/tag/v1.2.0",
+            "html_url": (
+                f"https://github.com/QuasarLI/PixelBridge-Distribution/releases/tag/v{self.version}"
+            ),
             "assets": [],
         }
 
@@ -411,6 +494,11 @@ class HandoffTests(unittest.TestCase):
             if args[:3] == ("gh", "release", "edit"):
                 self.assertEqual(verification_count, 22)
                 self.assertIn("--draft=false", args)
+                notes = Path(args[args.index("--notes-file") + 1]).read_text(encoding="utf-8")
+                if "distribution_mode" in self.manifest:
+                    self.assertIn("Non-bundled release: Sunshine is not included.", notes)
+                else:
+                    self.assertNotIn("Non-bundled release:", notes)
                 staged["draft"] = False
                 return ""
             self.fail(f"Unexpected command: {args}")
@@ -463,8 +551,17 @@ class HandoffTests(unittest.TestCase):
                 self.assertEqual(len([name for name in remote
                                       if name.endswith(".sigstore.json")]), 11)
                 self.assertFalse(any(name.endswith(".exe") for name in remote))
+                provenance = json.loads(remote["provenance.json"])
+                if "distribution_mode" in self.manifest:
+                    self.assertEqual(provenance["distribution_mode"], "nonbundled")
+                else:
+                    self.assertNotIn("distribution_mode", provenance)
 
     def test_mocked_publish_rechecks_all_bytes_before_publishing(self):
+        self.exercise_publish()
+
+    def test_mocked_nonbundled_publish_preserves_asset_and_signature_contract(self):
+        self.use_nonbundled_handoff()
         self.exercise_publish()
 
     def test_signature_failure_leaves_draft_unpublished(self):

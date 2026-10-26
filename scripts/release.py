@@ -245,10 +245,16 @@ def validate_handoff(directory, policy, version, source_commit, manifest_hash,
     require(manifest_path.stat().st_size <= 1024 * 1024, "Manifest exceeds size limit")
     require(sha256(manifest_path) == manifest_hash, "Manifest differs from approved SHA256")
     manifest = read_json(manifest_path)
-    exact_keys(manifest, ("schema_version", "product", "version", "source_repository",
-                          "source_commit", "artifacts"), "Manifest")
+    manifest_keys = ("schema_version", "product", "version", "source_repository",
+                     "source_commit", "artifacts")
+    if tuple(map(int, version.split("."))) >= (1, 3, 0):
+        manifest_keys += ("distribution_mode",)
+    exact_keys(manifest, manifest_keys, "Manifest")
     require(type(manifest["schema_version"]) is int and manifest["schema_version"] == 1,
             "Unsupported manifest schema")
+    if "distribution_mode" in manifest:
+        require(manifest["distribution_mode"] == "nonbundled",
+                "Only the explicit nonbundled distribution mode is supported")
     require(manifest["product"] == "PixelBridge" and manifest["version"] == version and
             manifest["source_repository"] == SOURCE_REPOSITORY and
             manifest["source_commit"] == source_commit, "Manifest source/version mismatch")
@@ -409,7 +415,8 @@ def publish(policy_path, work):
             all(original[name][1] <= MAX_ARCHIVE_BYTES for name in names.values()),
             "Staged asset exceeds size limit")
     download_assets(tag, incoming, expected)
-    validate_handoff(incoming, policy, version, source_commit, manifest_hash, executables)
+    manifest = validate_handoff(incoming, policy, version, source_commit, manifest_hash,
+                                executables)
     cosign = install_cosign(policy, work)
     provenance = {
         "schema_version": 1,
@@ -429,6 +436,8 @@ def publish(policy_path, work):
         "cosign_version": policy["cosign_version"],
         "cosign_linux_amd64_sha256": policy["cosign_linux_amd64_sha256"],
     }
+    if "distribution_mode" in manifest:
+        provenance["distribution_mode"] = manifest["distribution_mode"]
     write_json(outgoing / "provenance.json", provenance)
     blobs = {name: incoming / name for name in expected}
     blobs["provenance.json"] = outgoing / "provenance.json"
@@ -472,8 +481,14 @@ def publish(policy_path, work):
             "Draft changed during final verification")
     require_release_source(distribution_commit)
     require_unused_tag(tag)
+    mode_note = (
+        "Non-bundled release: Sunshine is not included. Obtain it separately "
+        "from its official upstream releases.\n\n"
+        if "distribution_mode" in manifest else ""
+    )
     notes = (
         f"PixelBridge {version}: Free, FreewithAds, Supporter and Pro production editions.\n\n"
+        f"{mode_note}"
         f"Source commit: `{source_commit}` (private application repository).\n"
         f"Distribution workflow commit: `{distribution_commit}`.\n"
         f"Signing run: {provenance['workflow_run']}\n\n"

@@ -1,0 +1,69 @@
+name: Sign and publish production release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Approved MAJOR.MINOR.PATCH version, without v
+        required: true
+        type: string
+      source_commit:
+        description: Approved private application source commit (40 lowercase hex)
+        required: true
+        type: string
+      manifest_sha256:
+        description: Independently approved release-manifest.json SHA256
+        required: true
+        type: string
+      confirm_publish:
+        description: Coordinator has approved these exact artifacts for public release
+        required: true
+        default: false
+        type: boolean
+
+permissions: {}
+
+concurrency:
+  group: pixelbridge-production-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: >-
+      github.repository == 'QuasarLI/PixelBridge-Distribution' &&
+      github.ref == 'refs/heads/main' &&
+      github.ref_protected &&
+      inputs.confirm_publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: production-release
+    permissions:
+      contents: write
+      id-token: write
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      SOURCE_COMMIT: ${{ inputs.source_commit }}
+      MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+      RELEASE_SIGNING_ENABLED: ${{ vars.RELEASE_SIGNING_ENABLED }}
+    steps:
+      - name: Require explicit enablement
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$RELEASE_SIGNING_ENABLED" = true
+
+      - name: Check out the protected distribution workflow commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Check staged artifacts, sign, verify and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/release.py publish \
+            --policy release-policy.json \
+            --work "$RUNNER_TEMP/pixelbridge-release"

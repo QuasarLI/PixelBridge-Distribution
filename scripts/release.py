@@ -26,6 +26,7 @@ ISSUER = "https://token.actions.githubusercontent.com"
 MAX_ARCHIVE_BYTES = 256 * 1024 * 1024
 MAX_EXPANDED_BYTES = 512 * 1024 * 1024
 UNSAFE_NAME = re.compile(
+    r"(?:^|[/_.-])(?:local|test|testing)(?:$|[/_.-])|"
     r"local[-_]?test|unlocked|private|credential|secret|seller[-_]?token|"
     r"customer[-_]?key|pairing|sunshine|browser[-_]?profile",
     re.IGNORECASE,
@@ -110,12 +111,17 @@ def archive_names(version):
 
 
 def validate_policy(policy, require_enabled=True):
-    exact_keys(policy, ("schema_version", "enabled", "cosign_version",
+    exact_keys(policy, ("schema_version", "enabled", "candidate", "cosign_version",
                         "cosign_linux_amd64_sha256", "payload_files"), "Policy")
     require(type(policy["schema_version"]) is int and policy["schema_version"] == 1,
             "Unsupported policy schema")
     require(type(policy["enabled"]) is bool, "Policy enabled flag must be boolean")
     require(not require_enabled or policy["enabled"], "Release policy is disabled")
+    candidate = policy["candidate"]
+    exact_keys(candidate, ("version", "source_commit", "manifest_sha256"), "Candidate")
+    require(valid_version(candidate["version"]) and
+            valid_hash(candidate["source_commit"], 40) and
+            valid_hash(candidate["manifest_sha256"]), "Invalid pinned release candidate")
     validate_tool_pin(policy)
     exact_keys(policy["payload_files"], EDITIONS, "Edition payload policy")
     for edition, paths in policy["payload_files"].items():
@@ -224,6 +230,11 @@ def validate_handoff(directory, policy, version, source_commit, manifest_hash,
     require(valid_hash(source_commit, 40), "An exact lowercase source commit is required")
     require(valid_hash(manifest_hash), "An independently approved manifest SHA256 is required")
     validate_policy(policy, require_enabled=require_enabled)
+    require(policy["candidate"] == {
+        "version": version,
+        "source_commit": source_commit,
+        "manifest_sha256": manifest_hash,
+    }, "Inputs differ from the candidate pinned in the release policy")
     directory = Path(directory)
     expected = {*names.values(), "release-manifest.json"}
     if exact_assets:
@@ -489,7 +500,8 @@ def main():
         if args.command == "validate":
             validate_handoff(args.directory, read_json(args.policy), args.version,
                              args.source_commit, args.manifest_sha256, require_enabled=False)
-            print("Production handoff matches the reviewed policy and approved manifest.")
+            print("Production handoff matches the pinned policy and manifest. "
+                  "This does not authorize publication.")
         elif args.command == "publish":
             publish(args.policy, args.work)
         else:

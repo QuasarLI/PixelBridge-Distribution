@@ -28,6 +28,11 @@ class HandoffTests(unittest.TestCase):
         self.policy = {
             "schema_version": 1,
             "enabled": True,
+            "candidate": {
+                "version": self.version,
+                "source_commit": self.commit,
+                "manifest_sha256": "0" * 64,
+            },
             "cosign_version": "v3.0.0",
             "cosign_linux_amd64_sha256": "b" * 64,
             "payload_files": {edition: ["PixelBridge.exe"] for edition in release.EDITIONS},
@@ -64,6 +69,7 @@ class HandoffTests(unittest.TestCase):
         self.manifest_path = self.directory / "release-manifest.json"
         self.manifest_path.write_text(json.dumps(self.manifest), encoding="utf-8")
         self.manifest_hash = release.sha256(self.manifest_path)
+        self.policy["candidate"]["manifest_sha256"] = self.manifest_hash
 
     def validate(self):
         return release.validate_handoff(self.directory, self.policy, self.version,
@@ -71,6 +77,23 @@ class HandoffTests(unittest.TestCase):
 
     def test_exact_handoff_is_accepted(self):
         self.assertEqual(self.validate(), self.manifest)
+
+    def test_dispatch_inputs_must_match_pinned_candidate(self):
+        for key, value in (("version", "1.2.1"), ("source_commit", "f" * 40),
+                           ("manifest_sha256", "e" * 64)):
+            with self.subTest(key=key):
+                original = self.policy["candidate"][key]
+                self.policy["candidate"][key] = value
+                try:
+                    with self.assertRaisesRegex(release.ReleaseError, "Inputs differ"):
+                        self.validate()
+                finally:
+                    self.policy["candidate"][key] = original
+
+    def test_candidate_fields_are_strictly_validated(self):
+        self.policy["candidate"]["manifest_sha256"] = "not-a-hash"
+        with self.assertRaisesRegex(release.ReleaseError, "Invalid pinned release candidate"):
+            self.validate()
 
     def test_disabled_policy_cannot_publish(self):
         self.policy["enabled"] = False
@@ -134,13 +157,35 @@ class HandoffTests(unittest.TestCase):
         for name in ("../escape", "A/../escape", "/absolute", "A\\escape",
                      "C:/escape", "A//B", "A/.git/config", "NUL.txt",
                      "a/COM1.cfg", "a.", "Pro-LOCAL-TEST.exe", "unlocked.exe",
-                     "customer-key.json", "pairing.json", "config.pfx", "App.cs"):
+                     "customer-key.json", "pairing.json", "config.pfx", "App.cs",
+                     "Test.exe", "a/testing/file.txt", "local-settings.json"):
             with self.subTest(name=name), self.assertRaises(release.ReleaseError):
                 release.safe_path(name)
 
     def test_controller_mapping_filename_is_not_blanket_blocked(self):
         self.assertEqual(release.safe_path("controller-profiles.json"),
                          "controller-profiles.json")
+
+    def test_committed_payload_policy_preserves_all_edition_mappings(self):
+        policy = release.read_json(Path(__file__).resolve().parents[1] / "release-policy.json")
+        release.validate_policy(policy, require_enabled=False)
+        common = policy["payload_files"]["Free"]
+        self.assertEqual(len(common), 14)
+        for edition in ("Supporter", "Pro"):
+            self.assertEqual(policy["payload_files"][edition], common)
+        self.assertEqual(
+            policy["payload_files"]["FreewithAds"],
+            sorted([*common, "Assets/AdGuard-728x90.png"]),
+        )
+        self.assertEqual(
+            [path for path in common if path.startswith("Profiles/")],
+            ["Profiles/Dreamcast.rmp", "Profiles/Genesis.rmp", "Profiles/N64.rmp",
+             "Profiles/NES.rmp", "Profiles/PixelBridge-XInput.cfg", "Profiles/SNES.rmp"],
+        )
+        self.assertEqual(
+            [path for path in common if path.endswith(".ps1")],
+            ["PixelBridge-Backend.ps1", "PixelBridge-Performance.ps1"],
+        )
 
     def test_case_colliding_policy_paths_are_rejected(self):
         self.policy["payload_files"]["Free"] = ["PixelBridge.exe", "pixelbridge.exe"]

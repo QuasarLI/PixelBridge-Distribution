@@ -199,6 +199,35 @@ payload file, sorted ordinally by `path`, with its uncompressed size and SHA256.
 There are no timestamps, local paths, arbitrary URLs, extra metadata or extra
 editions. SHA256s and commits use lowercase hexadecimal.
 
+### Non-bundled v1.3.0 and later
+
+Starting with version `1.3.0`, schema version `1` requires one additional top-level
+field, `"distribution_mode":"nonbundled"`, immediately after `version` in the
+producer's canonical property order. The exact top-level keys are
+`schema_version`, `product`, `version`, `distribution_mode`, `source_repository`,
+`source_commit` and `artifacts`. The value is the literal lowercase `nonbundled`;
+omitting it, using a different value or adding unknown fields is rejected.
+Legacy manifests before `1.3.0`, including the published `1.2.0` manifest, retain
+the original six-field shape and bytes. Artifact and payload file records do not
+change.
+
+The agreed non-bundled `1.3.0` payload path set remains the same 14 files per
+edition, or 15 for FreewithAds. Updated README and third-party notices may provide
+official upstream download guidance, but Sunshine itself is **not included**.
+No installer, Lite build, source archive, inventory, compliance sidecar or
+`third_party_sources` field is accepted by this contract. Private build receipts
+mirror the mode but are never public release assets. Future bundled distribution
+requires separate review and support; this change does not authorize it.
+
+The signed manifest binds the mode to the exact reviewed bytes. Generated signed
+provenance copies `distribution_mode`, and release notes disclose that Sunshine
+must be obtained separately. The four-ZIP, 18-asset and 11-signature contracts and
+all payload allowlists and publication guards remain unchanged. This is
+source-independent infrastructure support, **not approval or publication of a
+v1.3.0 candidate**. Actual source and manifest hashes must be independently
+reviewed and pinned through a new protected PR before separately authorized
+release steps. Never reuse v1.2.0 authorization or placeholder candidate pins.
+
 The reviewed policy contains the independent exact path list for each edition.
 Manifest paths must equal that policy, not merely pass a substring filter.
 The validator also rejects obvious local-test/unlocked/private/credential/pairing

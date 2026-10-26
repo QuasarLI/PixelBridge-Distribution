@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+artifacts/
+*.zip
+*.exe
+*.key
+*.pfx

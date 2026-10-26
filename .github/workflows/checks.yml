@@ -1,0 +1,32 @@
+name: Release infrastructure checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release-guard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out release infrastructure
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Exercise production handoff and publish guards
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Verify pinned cosign download and command interfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/release.py check-tool \
+            --policy release-policy.json \
+            --directory "$RUNNER_TEMP/pixelbridge-cosign"

@@ -143,6 +143,27 @@ class HandoffTests(unittest.TestCase):
         self.assertEqual(release.safe_path("controller-profiles.json"),
                          "controller-profiles.json")
 
+    def test_committed_payload_policy_preserves_all_edition_mappings(self):
+        policy = release.read_json(Path(__file__).resolve().parents[1] / "release-policy.json")
+        release.validate_policy(policy, require_enabled=False)
+        common = policy["payload_files"]["Free"]
+        self.assertEqual(len(common), 14)
+        for edition in ("Supporter", "Pro"):
+            self.assertEqual(policy["payload_files"][edition], common)
+        self.assertEqual(
+            policy["payload_files"]["FreewithAds"],
+            sorted([*common, "Assets/AdGuard-728x90.png"]),
+        )
+        self.assertEqual(
+            [path for path in common if path.startswith("Profiles/")],
+            ["Profiles/Dreamcast.rmp", "Profiles/Genesis.rmp", "Profiles/N64.rmp",
+             "Profiles/NES.rmp", "Profiles/PixelBridge-XInput.cfg", "Profiles/SNES.rmp"],
+        )
+        self.assertEqual(
+            [path for path in common if path.endswith(".ps1")],
+            ["PixelBridge-Backend.ps1", "PixelBridge-Performance.ps1"],
+        )
+
     def test_case_colliding_policy_paths_are_rejected(self):
         self.policy["payload_files"]["Free"] = ["PixelBridge.exe", "pixelbridge.exe"]
         with self.assertRaisesRegex(release.ReleaseError, "case-unique"):

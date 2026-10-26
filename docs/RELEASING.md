@@ -3,10 +3,10 @@
 ## Status and prerequisites
 
 This is **disabled release preparation**, not evidence of a shipped release.
-Version **1.2.0** and the production naming contract are approved. Production ZIPs,
-their source commit and the final payload allowlists are still pending. No
-production blobs have been signed. Do not enable signing until the following
-prerequisites are complete.
+Version **1.2.0** and the production naming contract are approved. The disabled
+policy records the producer's intended payload paths; final ZIPs, source commit,
+hashes and independent payload review are still pending. No production blobs have
+been signed. Do not enable signing until the following prerequisites are complete.
 
 1. Review current official [Sigstore blob signing documentation](https://docs.sigstore.dev/cosign/signing/signing_with_blobs/),
    [verification documentation](https://docs.sigstore.dev/cosign/verifying/verify/),
@@ -73,6 +73,15 @@ Each ZIP has `PixelBridge.exe` at its root, not an enclosing directory, plus onl
 explicitly reviewed runtime assets, public documentation, controller mappings and
 fresh templates. All usable Xbox mappings/profiles are included in every edition.
 Paid production builds remain license-gated.
+
+The intended v1.2.0 payload in [release-policy.json](../release-policy.json) has
+14 files common to all editions: the native EXE, Backend and Performance runtime
+PowerShell scripts, original logo/icon, controller documentation, five RetroArch
+mappings and the common XInput configuration, README and third-party notices.
+FreewithAds alone adds `Assets/AdGuard-728x90.png` for 15 files. There is no separate
+firewall script. These are producer-declared intended paths, **not approval of
+their contents**; compare every final archive entry and hash against the reviewed
+private build and manifest before enabling publication.
 
 The ZIP producer must omit directory entries, comments, ZIP extra fields, data
 descriptors, prefixes/trailing data, encrypted entries and symlinks. Use a seekable

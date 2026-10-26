@@ -2,12 +2,15 @@
 
 ## Status and prerequisites
 
-This is **disabled release preparation**, not evidence of a shipped release.
-Version **1.2.0** and the production naming contract are approved. The disabled
-policy records the candidate's exact source commit, manifest hash and payload
-paths. The local customer export passed independent read-only validation; final
-coordinator publication approval is still pending. No production blobs have been
-signed. Do not enable signing until the following prerequisites are complete.
+The **repository policy gate is enabled**, but **signing remains disabled**; this
+is not evidence of a shipped release. The coordinator approved the version
+**1.2.0** candidate's exact source commit, manifest hash and four customer ZIP
+payloads, and separately authorized only this repository gate change. The local
+customer export passed independent read-only validation. The `production-release`
+environment remains `RELEASE_SIGNING_ENABLED=false`; staging, dispatch, signing
+and publication are not authorized. No production blobs have been signed.
+Separate authorization for the exact final protected distribution/workflow commit
+is still required, with the review and acceptance limitations below retained.
 
 1. Review current official [Sigstore blob signing documentation](https://docs.sigstore.dev/cosign/signing/signing_with_blobs/),
    [verification documentation](https://docs.sigstore.dev/cosign/verifying/verify/),
@@ -40,16 +43,20 @@ signed. Do not enable signing until the following prerequisites are complete.
    another trusted maintainer becomes available, add mandatory independent PR and
    environment reviewers and prevent self-review; never weaken existing controls
    to make a release run.
-4. Have the coordinator approve the exact version, private application source
+4. The coordinator has approved the exact version, private application source
    commit, complete public payload, independently reviewed per-edition filename
-   allowlist, and manifest SHA256. The policy's `candidate` pins the version,
+   allowlist, and manifest SHA256 documented below. The policy's `candidate` pins the version,
    source commit and manifest digest; all dispatch inputs must match those pins.
    Changing a candidate requires another reviewed policy change. A matching
    checksum or a builder-supplied filename is **not** evidence that a file is
    appropriate to publish.
-5. Run `python -m unittest discover -s tests -v`, validate the actual handoff, review
-   this workflow end-to-end, and obtain final coordinator authorization. Only then
-   set policy `enabled` and environment variable `RELEASE_SIGNING_ENABLED` to `true`.
+5. The policy `enabled` gate is authorized independently through the protected PR
+   path and required CI. Run `python -m unittest discover -s tests -v`, validate the
+   actual handoff, review this workflow end-to-end, and obtain successful required
+   CI for the final protected distribution commit. Keep environment variable
+   `RELEASE_SIGNING_ENABLED=false` until separate exact-commit coordinator
+   authorization explicitly permits enablement and the release steps. Enabling
+   the repository policy alone does not authorize staging or dispatch.
 
 The workflow uses only GitHub-hosted runners, GitHub release storage, GitHub OIDC,
 and Sigstore's public signing/transparency services. No private-repository checkout,
@@ -90,7 +97,8 @@ hash against the reviewed private build and manifest before enabling publication
 The candidate is version `1.2.0`, private application source commit
 `6322a75cb58544401b8ae6a864ddf98cd558c45a`, and exact manifest SHA256
 `7d480908eafca07ae04fa5ec6e802923200f1253884307ec28e21a086507c424`.
-Those identifiers record a candidate, not coordinator signing authorization.
+Those identifiers pin the content-approved candidate, not coordinator staging,
+dispatch or signing authorization.
 
 Independent read-only inspection of the local customer export confirmed exactly
 four production ZIPs and the manifest; each ZIP's complete entry list, sizes,
@@ -194,6 +202,10 @@ credentials, signing keys, logs, Sunshine pairing/configuration/state, or any
 user-specific data. Do not touch the existing local CloudPlay installation.
 
 ## Staging and signing
+
+The steps below are a future procedure, not current authorization. Do not stage
+or dispatch while exact-commit coordinator authorization is pending, and keep
+`RELEASE_SIGNING_ENABLED=false`.
 
 A draft release in a **public repository is not a private storage/security
 boundary**. Stage only vetted production artifacts whose publication is approved.
